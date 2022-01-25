@@ -202,10 +202,7 @@ const sendMessages = (messages: Message[]) => {
   if (messages?.length) {
     fbMessaging
       .sendAll(messages)
-      .then((response) => {
-        console.log(response.successCount + " messages were sent successfully");
-        console.log(response.failureCount + " messages failed to send");
-      })
+      .then((response) => {})
       .catch((e: any) => console.log);
   }
 };
