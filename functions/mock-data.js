@@ -9,25 +9,28 @@ const db = admin.firestore();
 const initialDate = timestamp.firestore.Timestamp.fromDate(
   new Date("01-02-2020")
 );
-const mockData = [
+const uid = "ooo";
+const coinMockData = [
   {
-    user: "westoncsazehn@gmail.com",
+    user: uid,
     initialInvestment: 2,
     initialDate,
     targetMultiplier: 3,
     coin: "bitcoin",
     initialPricePerCoin: 6985.47,
+    isMessageEnabled: true,
   },
   {
-    user: "westoncsazehn@gmail.com",
+    user: uid,
     initialInvestment: 1,
     initialDate,
     targetMultiplier: 2,
     coin: "binancecoin",
     initialPricePerCoin: 13.03,
+    isMessageEnabled: true,
   },
   {
-    user: "westoncsazehn@gmail.com",
+    user: uid,
     initialInvestment: 10,
     initialDate,
     targetMultiplier: 4,
@@ -35,14 +38,16 @@ const mockData = [
     initialPricePerCoin: 127.41,
   },
 ];
+const phoneMockData = { phoneNumber: 1234567890 };
 
-function addData() {
+function addMockData() {
   try {
-    mockData.map((item) => db.collection("coin").add(item));
+    coinMockData.map((item) => db.collection("coin").add(item));
+    db.collection("phone").doc(uid).set(phoneMockData);
     console.log("data added successfully");
   } catch (error) {
     console.log(error, "adding data failed");
   }
 }
 
-addData();
+addMockData();
