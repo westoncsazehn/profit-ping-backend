@@ -1,6 +1,5 @@
 // local
-import {coinDB, db} from './firebase-util';
-
+import { coinDB, db } from "../firebase";
 
 export const deleteUserCoins = async (uid: string) => {
   const userCoinsSnapshot = await coinDB.where("user", "==", uid).get();

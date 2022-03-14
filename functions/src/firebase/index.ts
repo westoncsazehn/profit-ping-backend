@@ -1,8 +1,8 @@
-// 3rd party libraries
-import * as admin from "firebase-admin";
+import admin = require("firebase-admin");
 
-export const fbApp = admin.initializeApp();
+admin.initializeApp();
 export const auth = admin.auth();
 export const db = admin.firestore();
 export const coinDB = db.collection("coin");
 export const phoneDB = db.collection("phone");
+export const productsDB = db.collection("products");

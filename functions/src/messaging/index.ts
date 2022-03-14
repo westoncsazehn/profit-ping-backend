@@ -1,8 +1,15 @@
 // local
-import { UserCoinMetricData, CoinMetrics, Message, MessageData } from "./types";
-import { gecko } from "./gecko-api";
-import { coinDB, phoneDB } from "./firebase-util";
-import { FROM_PHONE_NUMBER, sendTwilioMessage } from "./twilio";
+import { coinDB, phoneDB } from "../firebase";
+import { gecko } from "../crypto-api";
+import {
+  CoinMetrics,
+  Message,
+  MessageData,
+  UserCoinMetricData,
+} from "../messaging/types";
+import { sendTwilioMessage } from "../messaging/twilio";
+
+const { FROM_PHONE_NUMBER = "" } = process.env;
 
 // sendProfitingCoinMessages > getProfitingCoinsList
 // get profiting coin documents and assign to array
@@ -44,7 +51,7 @@ const addToProfitingCoinsList = async (
     initialPricePerCoin &&
     isMessageEnabled
   ) {
-    const currentPriceUSD: number = await getCoinsCurrentPrice(
+    const { currentPrice, name } = await getCurrentCoinData(
       coin,
       initialInvestment
     );
@@ -54,24 +61,25 @@ const addToProfitingCoinsList = async (
       (item) => item.user === user
     );
     const isUserInList: boolean = userIndex > -1;
-    const isProfitting: boolean = currentPriceUSD >= multiTargetPriceUSD;
+    const isProfitting: boolean = currentPrice >= multiTargetPriceUSD;
+    const profitCoinMetric = { name, ...coinMetric };
     if (
       isProfitting &&
       isUserInList &&
       profitingCoinsList[userIndex] &&
       !profitingCoinsList[userIndex].coins.some((item) => item.coin === coin)
     ) {
-      profitingCoinsList[userIndex].coins.push(coinMetric);
+      profitingCoinsList[userIndex].coins.push(profitCoinMetric);
     } else if (isProfitting && !isUserInList) {
-      profitingCoinsList.push({ ...{ user, coins: [coinMetric] } });
+      profitingCoinsList.push({ ...{ user, coins: [profitCoinMetric] } });
     }
   }
 };
 // addToProfitingCoinsList > getCoinsCurrentPrice
-export const getCoinsCurrentPrice = async (
+const getCurrentCoinData = async (
   coin: string,
   initialInvestment: number
-): Promise<number> => {
+): Promise<{ currentPrice: number; name: string }> => {
   const params: URLSearchParams = new URLSearchParams({
     vs_currency: "usd",
     order: "market_cap_desc",
@@ -82,14 +90,14 @@ export const getCoinsCurrentPrice = async (
   if (coin) {
     params.append("ids", coin);
   }
-  const { data }: { data: { current_price: number }[] } = await gecko.get(
-    `coins/markets?${params.toString()}`
-  );
+  const { data }: { data: { current_price: number; name: string }[] } =
+    await gecko.get(`coins/markets?${params.toString()}`);
   const currentPrice: number = (data && data[0] && data[0]?.current_price) || 0;
   if (currentPrice === 0) {
     throw new Error("No current_price available from gecko api.");
   }
-  return Number(currentPrice) * initialInvestment;
+  const name: string = String(data && data[0] && data[0]?.name);
+  return { currentPrice: Number(currentPrice) * initialInvestment, name };
 };
 // messageProfitingCoinsToDevices > getMessages
 export const getMessages = async (
@@ -97,22 +105,23 @@ export const getMessages = async (
 ): Promise<Message[]> => {
   const messages: Message[] = [];
   for (const profitItem of profitingCoins) {
-    const phoneNumber: number = await getUserPhoneNumber(profitItem.user);
-    if (phoneNumber > 0) {
+    const phoneNumber: string = await getUserPhoneNumber(profitItem.user);
+    if (phoneNumber) {
       let coins: string = "";
       let coinIDs: string[] = [];
       profitItem.coins.forEach((coin: CoinMetrics) => {
+        const coinName = String(coin.name);
         if (!coins?.length) {
-          coins = coin.coin;
+          coins = coinName;
         } else if (coins?.length) {
-          coins += `, ${coin.coin}`;
+          coins += `, ${coinName}`;
         }
         coinIDs.push(coin.coin);
       });
       messages.push({
         uid: profitItem.user,
         coinIDs: coinIDs,
-        message: buildMessage({ phoneNumber: `+1${phoneNumber}`, coin: coins }),
+        message: buildMessage({ phoneNumber, coin: coins }),
       });
     }
   }
@@ -120,23 +129,26 @@ export const getMessages = async (
   return allMessages;
 };
 // getMessages > getUserPhoneNumber
-const getUserPhoneNumber = async (uid: string): Promise<number> => {
+const getUserPhoneNumber = async (uid: string): Promise<string> => {
   const phoneSnapshot = await phoneDB.doc(uid).get();
   if (phoneSnapshot.exists) {
-    return Number(phoneSnapshot?.data()?.phoneNumber);
+    return String(phoneSnapshot?.data()?.phoneNumber);
   } else {
-    return 0;
+    return "";
   }
 };
 // getMessages > buildMessage
 const buildMessage = ({
   phoneNumber,
   coin = "",
-}: MessageData): Message["message"] => ({
-  from: FROM_PHONE_NUMBER,
-  body: `Profit Ping | Your coins: ${coin}, multiplier hit!`,
-  to: phoneNumber,
-});
+}: MessageData): Message["message"] => {
+  const multiplier: string = `multiplier${coin.includes(",") ? "s" : ""}`;
+  return {
+    from: FROM_PHONE_NUMBER,
+    body: `Profit Ping ${multiplier} hit for: ${coin}!`,
+    to: phoneNumber,
+  };
+};
 // messageProfitingCoinsToDevices > sendMessages
 export const sendMessages = async (messages: Message[]) => {
   if (messages?.length) {
