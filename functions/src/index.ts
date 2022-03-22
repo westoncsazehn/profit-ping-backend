@@ -2,13 +2,10 @@
 import * as functions from "firebase-functions";
 // local
 import { getMessages, getProfitingCoinsList, sendMessages } from "./messaging";
-// @ts-ignore
+import { auth, phoneDB, plansDB, productsDB, subscribersDB } from "./firebase";
 import { CreatePlanDataType, CreateProductDataType } from "./paypal/types";
-// @ts-ignore
 import { createPlan, createProduct, getAccessToken } from "./paypal/api";
 import { Message, UserCoinMetricData } from "./messaging/types";
-// @ts-ignore
-import { auth, phoneDB, plansDB, productsDB } from "./firebase";
 import { deleteUserCoins } from "./delete-user";
 
 const { PAYPAL_PRODUCT_ID = "" } = process.env;
@@ -34,6 +31,7 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
   try {
     await deleteUserCoins(uid);
     await phoneDB.doc(uid).delete();
+    await subscribersDB.doc(uid).delete();
     await auth.deleteUser(uid);
     return { result: "success" };
   } catch (error) {
