@@ -10,4 +10,5 @@ node_modules/
 
 ui-debug.log
 firestore-debug.log
-.env
+.env.local
+.env.dev

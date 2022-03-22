@@ -8,6 +8,8 @@ typings/
 # Node.js dependency directory
 node_modules/
 /functions/node_modules/
+/functions/.env.dev
+/functions/.env.local
 
 /.idea/*
 

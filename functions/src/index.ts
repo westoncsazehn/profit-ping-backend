@@ -1,12 +1,15 @@
 // 3rd party libraries
 import * as functions from "firebase-functions";
 // local
-import { phoneDB, auth, productsDB } from "./firebase";
-import { deleteUserCoins } from "./delete-user";
 import { getMessages, getProfitingCoinsList, sendMessages } from "./messaging";
+// @ts-ignore
+import { CreatePlanDataType, CreateProductDataType } from "./paypal/types";
+// @ts-ignore
+import { createPlan, createProduct, getAccessToken } from "./paypal/api";
 import { Message, UserCoinMetricData } from "./messaging/types";
-import { createProduct, getAccessToken } from "./paypal/api";
-import { CreateProductDataType } from "./paypal/types";
+// @ts-ignore
+import { auth, phoneDB, plansDB, productsDB } from "./firebase";
+import { deleteUserCoins } from "./delete-user";
 
 const { PAYPAL_PRODUCT_ID = "" } = process.env;
 
@@ -52,6 +55,12 @@ exports.createProduct = functions.https.onCall(async () => {
     );
     if (!data) throw new Error("No data from production creation found.");
     await productsDB.add({ ...data });
+    const { id } = data;
+    const { data: planData }: CreatePlanDataType = await createPlan(
+      accessToken,
+      id
+    );
+    await plansDB.add({ ...planData });
     return { result: "success" };
   } catch (error) {
     return { errors: String(error) };
