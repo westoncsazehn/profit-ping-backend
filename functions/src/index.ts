@@ -39,28 +39,31 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
   }
 });
 // CLOUD FUNCTION > Paypal > Create Profit Ping Plus product
-exports.createProduct = functions.https.onCall(async () => {
-  try {
-    const {
-      data: { access_token: accessToken },
-    }: any = await getAccessToken();
-    const productID: string = `${PAYPAL_PRODUCT_ID}-${new Date().getMilliseconds()}`;
-    if (!accessToken || !productID)
-      throw new Error("Access key / product id not created");
-    const { data }: CreateProductDataType = await createProduct(
-      accessToken,
-      productID
-    );
-    if (!data) throw new Error("No data from production creation found.");
-    await productsDB.add({ ...data });
-    const { id } = data;
-    const { data: planData }: CreatePlanDataType = await createPlan(
-      accessToken,
-      id
-    );
-    await plansDB.add({ ...planData });
-    return { result: "success" };
-  } catch (error) {
-    return { errors: String(error) };
+exports.createProduct = functions.https.onRequest(
+  async (req: functions.Request, res: functions.Response) => {
+    try {
+      const {
+        data: { access_token: accessToken },
+      }: any = await getAccessToken();
+      const productID: string = `${PAYPAL_PRODUCT_ID}-${new Date().getMilliseconds()}`;
+      if (!accessToken || !productID)
+        throw new Error("Access key / product id not created");
+      const { data }: CreateProductDataType = await createProduct(
+        accessToken,
+        productID
+      );
+      if (!data) throw new Error("No data from production creation found.");
+      await productsDB.add({ ...data });
+      const { id } = data;
+      const { data: planData }: CreatePlanDataType = await createPlan(
+        accessToken,
+        id
+      );
+      await plansDB.add({ ...planData });
+      res.send({ result: "success" });
+    } catch (error) {
+      res.send({ errors: String(error) });
+    }
+    res.end();
   }
-});
+);
