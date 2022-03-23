@@ -12,7 +12,7 @@ const { PAYPAL_PRODUCT_ID = "" } = process.env;
 
 // CLOUD FUNCTION > Send Profit Ping Messages
 export const messageProfitingCoinsToDevices = functions.pubsub
-  .schedule("1 */12 * * *")
+  .schedule("0 13 * * *")
   .onRun(
     // export const messageProfitingCoinsToDevices = functions.https.onCall(
     async () => {
